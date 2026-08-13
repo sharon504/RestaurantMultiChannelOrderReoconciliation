@@ -62,6 +62,17 @@ pnpm dev
 
 `pnpm dev` seeds the deterministic demo data, starts the backend at `http://localhost:3000`, and starts the Vite demo (normally `http://localhost:5173`). Press `Ctrl-C` once to stop both. For separate terminals, use `pnpm backend` and `pnpm frontend`.
 
+### Deploy to Cloudflare
+
+The production deployment is one Cloudflare Worker: it serves the built React site and the API at the same origin (`/api/*` and `/health`). Its state is stored in the bound Cloudflare D1 database, so `POST /api/close` and `POST /api/adjust` are durable and idempotent. The GitHub workflow applies the tracked D1 migrations before each deploy.
+
+```bash
+npm ci --prefix apps/demo
+npm run deploy
+```
+
+Set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in the environment for a local deployment. The GitHub workflow at `.github/workflows/deploy.yml` runs the same build and deploys every push to `main`; configure those two values as repository secrets. Scope the token to the target Cloudflare account and Worker.
+
 Generated data lands in `data/` (order feeds, kitchen confirmations, settlements, ground truth). Output includes daily-close figures, an exception report, and adjustment records linked to the original close.
 
 ## Scope limits (intentionally excluded)

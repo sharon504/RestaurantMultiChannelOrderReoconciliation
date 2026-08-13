@@ -1,0 +1,28 @@
+{
+	"$schema": "./node_modules/wrangler/config-schema.json",
+	"name": "restaurant-reconciliation",
+	"main": "./worker/index.ts",
+	"compatibility_date": "2026-07-28",
+	"compatibility_flags": [
+		"nodejs_compat"
+	],
+	"observability": {
+		"enabled": true,
+		"head_sampling_rate": 1
+	},
+	"assets": {
+		"directory": "./apps/demo/dist",
+		"not_found_handling": "single-page-application",
+		"run_worker_first": [
+			"/api/*",
+			"/health"
+		]
+	},
+	"d1_databases": [
+		{
+			"binding": "DB",
+			"database_name": "restaurant-reconciliation",
+			"database_id": "805074e1-2b95-4b67-aba8-eb3dc4e20520"
+		}
+	]
+}

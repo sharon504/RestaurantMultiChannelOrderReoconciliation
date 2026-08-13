@@ -141,3 +141,10 @@ dist
 vite.config.js.timestamp-*
 vite.config.ts.timestamp-*
 .vite/
+
+# Wrangler local D1 state and logs
+.wrangler/
+worker-configuration.d.ts
+
+# Generated reconciliation fixtures and local store
+data/
