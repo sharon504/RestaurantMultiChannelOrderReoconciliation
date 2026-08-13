@@ -50,6 +50,18 @@ pnpm run validate                 # 8. compare output against ground truth
 
 For the complete deterministic workflow in one command, run `pnpm demo`, then `pnpm validate`. The API demo starts with `pnpm serve` and exposes `GET /api/reconciliation?date=2026-08-10`, `/api/exceptions`, `/api/closes`, and `/api/adjustments`; `POST /api/close` and `POST /api/adjust` execute the two state transitions. All identifiers are deterministic and every ingestion command is idempotent by `(source, externalId)`.
 
+### Run the API and demo together
+
+Install the root and demo dependencies once, then start both services with one command:
+
+```bash
+pnpm install
+pnpm --dir apps/demo install
+pnpm dev
+```
+
+`pnpm dev` seeds the deterministic demo data, starts the backend at `http://localhost:3000`, and starts the Vite demo (normally `http://localhost:5173`). Press `Ctrl-C` once to stop both. For separate terminals, use `pnpm backend` and `pnpm frontend`.
+
 Generated data lands in `data/` (order feeds, kitchen confirmations, settlements, ground truth). Output includes daily-close figures, an exception report, and adjustment records linked to the original close.
 
 ## Scope limits (intentionally excluded)

@@ -12,7 +12,7 @@ export class ReconciliationService {
 
   /** Records raw input before normalization. Same key + same payload is a no-op; a changed payload is evidence, not an overwrite. */
   private acceptRaw(kind: SourceRecord['kind'], source: string, externalId: string, payload: unknown): boolean {
-    const record: SourceRecord = { id: id(`raw_${kind}`, source, externalId), kind, source, externalId, payload: stable(payload), ingestedAt: now() };
+    const record: SourceRecord = { id: id(`raw_${kind}`, source, externalId), kind, source, externalId, payload: stable(payload), ingestedAt: now(), sequence: this.store.data.sourceRecords.length + 1 };
     const existing = this.store.data.sourceRecords.find(x => x.id === record.id);
     if (!existing) { this.store.data.sourceRecords.push(record); return true; }
     if (existing.payload !== record.payload) {
@@ -86,7 +86,7 @@ export class ReconciliationService {
   }
   private settlementWasInClose(settlement: Settlement, close: Close): boolean {
     const raw = this.store.data.sourceRecords.find(x => x.id === id('raw_settlement', settlement.source, settlement.externalId));
-    return !!raw && raw.ingestedAt <= close.createdAt;
+    return !!raw && raw.sequence <= close.sourceRecordSequence;
   }
 
   exceptions(date: string) {
@@ -123,7 +123,7 @@ export class ReconciliationService {
   }
   close(date: string): Close {
     const existing = this.store.data.closes.find(x => x.date === date); if (existing) return existing;
-    const report = this.reconcile(date); const close: Close = { id: id('close', 'day', date), date, createdAt: now(), orderIds: this.effectiveOrders(date).map(x => x.id), revenue: report.revenue, gross: report.gross, platformDiscount: report.platformDiscount, commission: report.commission, paid: report.paid, exceptionIds: report.exceptions.map(x => x.id), exceptionSnapshot: clone(report.exceptions) };
+    const report = this.reconcile(date); const close: Close = { id: id('close', 'day', date), date, createdAt: now(), orderIds: this.effectiveOrders(date).map(x => x.id), revenue: report.revenue, gross: report.gross, platformDiscount: report.platformDiscount, commission: report.commission, paid: report.paid, exceptionIds: report.exceptions.map(x => x.id), sourceRecordSequence: this.store.data.sourceRecords.length, exceptionSnapshot: clone(report.exceptions) };
     this.store.data.closes.push(close); this.store.save(); return close;
   }
   adjust() {
