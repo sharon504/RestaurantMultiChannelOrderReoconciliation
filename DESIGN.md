@@ -81,8 +81,8 @@ The generator writes the four channel feeds, kitchen confirmations, and settleme
 
 **Trade-off:** generator and reconciler share shape definitions, so a generator bug can mask a reconciler bug. Mitigated by keeping the generator deliberately simple and independently reviewed, since the brief mandates self-generated feeds.
 
-### 7. SQLite local store
-Single-process file-backed store; no external database service.
+### 7. Local JSON store
+Single-process JSON-file store; no external database service.
 
 **Trade-off:** fine for the exercise's local batch workloads and predictable volumes; would be swapped for Postgres behind a thin repository interface if concurrency, server multi-tenancy, or WAL durability is needed.
 
