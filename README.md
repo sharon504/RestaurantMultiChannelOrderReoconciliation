@@ -4,7 +4,7 @@ Reconciliation service for a restaurant group taking orders through four channel
 
 **Core design:** *close-then-adjust*. A closed day never mutates; a contradicting settlement file surfaces as a traceable adjustment.
 
-**Implementation stack:** Node.js (TypeScript) backend, React frontend.
+**Implementation stack:** Node.js (TypeScript) backend with a deliberately small API-driven demo surface. Local state is persisted in `data/store.json`; no service or credential is required.
 
 ## Reconciliation cases
 
@@ -30,10 +30,9 @@ Reconciliation service for a restaurant group taking orders through four channel
 ## Setup
 
 ```bash
-git clone <repository-url>
-cd restaurant-order-reconciliation
 pnpm install
-cp .env.example .env   # configure local DB/app settings
+pnpm run check
+pnpm test
 ```
 
 ## Run
@@ -42,12 +41,14 @@ cp .env.example .env   # configure local DB/app settings
 pnpm run generate                 # 1. generate synthetic feeds + ground truth
 pnpm run ingest:orders            # 2. normalize the four order feeds
 pnpm run ingest:kitchen           # 3. ingest kitchen confirmations
-pnpm run reconcile -- --date YYYY-MM-DD   # 4. daily reconciliation + financial summary
-pnpm run close -- --date YYYY-MM-DD       # 5. close the day (becomes immutable)
-pnpm run ingest:settlement -- <settlement-file>  # 6. ingest T+2 settlement
+pnpm run reconcile -- YYYY-MM-DD   # 4. daily reconciliation + financial summary
+pnpm run close -- YYYY-MM-DD       # 5. close the day (becomes immutable)
+pnpm run ingest:settlement -- data/settlements.json # 6. ingest T+2 settlement
 pnpm run adjust                   # 7. create adjustments against the closed day
 pnpm run validate                 # 8. compare output against ground truth
 ```
+
+For the complete deterministic workflow in one command, run `pnpm demo`, then `pnpm validate`. The API demo starts with `pnpm serve` and exposes `GET /api/reconciliation?date=2026-08-10`, `/api/exceptions`, `/api/closes`, and `/api/adjustments`; `POST /api/close` and `POST /api/adjust` execute the two state transitions. All identifiers are deterministic and every ingestion command is idempotent by `(source, externalId)`.
 
 Generated data lands in `data/` (order feeds, kitchen confirmations, settlements, ground truth). Output includes daily-close figures, an exception report, and adjustment records linked to the original close.
 

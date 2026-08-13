@@ -1,0 +1,21 @@
+{
+  "name": "restaurant-reconciliation",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "build": "tsc -p tsconfig.json",
+    "check": "tsc --noEmit",
+    "test": "pnpm run build && node --test dist/test/*.test.js",
+    "generate": "pnpm run build && node dist/cli.js generate",
+    "demo": "pnpm run build && node dist/cli.js demo",
+    "serve": "pnpm run build && node dist/server.js",
+    "ingest:orders": "pnpm run build && node dist/cli.js ingest-orders",
+    "ingest:kitchen": "pnpm run build && node dist/cli.js ingest-kitchen",
+    "reconcile": "pnpm run build && node dist/cli.js reconcile",
+    "close": "pnpm run build && node dist/cli.js close",
+    "ingest:settlement": "pnpm run build && node dist/cli.js ingest-settlement",
+    "adjust": "pnpm run build && node dist/cli.js adjust",
+    "validate": "pnpm run build && node dist/cli.js validate"
+  }
+}
