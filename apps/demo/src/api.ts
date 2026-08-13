@@ -17,7 +17,7 @@ type ApiReconciliation = {
   date: string; orders: number; gross: number; platformDiscount: number; commission: number; paid: number; revenue: number; exceptions: ApiException[];
 };
 type ApiClose = { id: string; date: string; createdAt: string; revenue: number; orderIds: string[] };
-type ApiAdjustment = { id: string; orderId: string; settlementId: string; reason: string; amount: number };
+type ApiAdjustment = { id: string; closeId: string; orderId: string; settlementId: string; reason: string; amount: number };
 type ApiState = { orders: ApiOrder[]; settlements: { id: string; externalId: string }[] };
 
 export type DashboardLoad = { data: DashboardData; source: "demo" | "fallback" | "api"; message?: string };
@@ -50,9 +50,12 @@ function toDashboard(reconciliation: ApiReconciliation, closes: ApiClose[], adju
     const order = item.orderId ? orders.get(item.orderId) : undefined;
     return { id: item.id, order: order?.externalId ?? item.orderId ?? "Unlinked", channel: order ? channelName[order.channel] : "Unknown", reason: item.reason, amount: exposureFor(item, order, adjustments), severity: severityFor(item.reason) };
   });
-  const displayedAdjustments: Adjustment[] = adjustments.map((item) => ({ id: item.id, settlement: settlements.get(item.settlementId) ?? item.settlementId, reason: item.reason, amount: item.amount, status: "posted" }));
+  const displayedAdjustments: Adjustment[] = adjustments
+    .filter((item) => !close || item.closeId === close.id)
+    .map((item) => ({ id: item.id, settlement: settlements.get(item.settlementId) ?? item.settlementId, reason: item.reason, amount: item.amount, status: "posted" }));
   const exposure = exceptions.reduce((sum, item) => sum + Math.abs(item.amount), 0);
-  const matched = Math.max(0, reconciliation.orders - exceptions.length);
+  const affectedOrders = new Set(exceptions.map((item) => item.order).filter((order) => order !== "Unlinked"));
+  const matched = Math.max(0, reconciliation.orders - affectedOrders.size);
   return {
     businessDate: reconciliation.date,
     close: close
