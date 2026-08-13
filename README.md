@@ -66,6 +66,8 @@ pnpm dev
 
 The production deployment is one Cloudflare Worker: it serves the built React site and the API at the same origin (`/api/*` and `/health`). Its state is stored in the bound Cloudflare D1 database, so `POST /api/close` and `POST /api/adjust` are durable and idempotent. The GitHub workflow applies the tracked D1 migrations before each deploy.
 
+The hosted dashboard includes a shared simulation lab: reset the fixture, close the day, then apply the T+2 settlement. `POST /api/reset` restores the baseline state for another run.
+
 ```bash
 npm ci --prefix apps/demo
 npm run deploy

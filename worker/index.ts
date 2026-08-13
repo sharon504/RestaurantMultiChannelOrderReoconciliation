@@ -135,6 +135,9 @@ export default {
       if (request.method === "POST" && url.pathname === "/api/adjust") {
         const result = adjust(state); await saveState(env.DB, state); return json(result);
       }
+      if (request.method === "POST" && url.pathname === "/api/reset") {
+        const reset = initialState(); await saveState(env.DB, reset); return json({ ok: true, state: reset });
+      }
       return json({ error: "not found" }, 404);
     } catch (error) {
       console.error(JSON.stringify({ event: "api_error", message: error instanceof Error ? error.message : "unknown" }));

@@ -89,3 +89,13 @@ export async function loadDashboard(): Promise<DashboardLoad> {
     return { data: demoData, source: "fallback", message };
   }
 }
+
+export type SimulationAction = "close" | "adjust" | "reset";
+
+export async function runSimulation(action: SimulationAction): Promise<void> {
+  const response = await fetch(`${apiBase}/api/${action}`, { method: "POST", headers: { Accept: "application/json" } });
+  if (!response.ok) {
+    const body = await response.json().catch(() => null) as { error?: string } | null;
+    throw new Error(body?.error ?? `${action} simulation failed (${response.status})`);
+  }
+}
