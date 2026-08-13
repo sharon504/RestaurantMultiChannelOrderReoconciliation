@@ -1,0 +1,24 @@
+# Restaurant Reconciliation Agent Guide
+
+## Goal
+
+Build an auditable, backend-first local reconciliation service. Preserve the close-then-adjust invariant: a closed daily snapshot is immutable; late settlement differences are appended as linked adjustments.
+
+## Working rules
+
+- Use TypeScript with strict typing, integer minor currency units, UTC ISO timestamps, and deterministic IDs.
+- Keep source events append-only. Do not silently merge probable duplicates or genuine repeat orders.
+- Give every exception a stable reason code and links to the source records that caused it.
+- Keep financial components separate: gross, platform discount, commission, and paid/settled amount.
+- Make every CLI/API write idempotent. Treat repeat ingestion of the same source record as a no-op.
+- Do not add remote services or credentials. The app must run locally with `pnpm install` and documented commands.
+
+## Verification
+
+- Run the TypeScript check and tests after relevant changes.
+- Run the generated end-to-end workflow, including close, settlement ingestion, adjustment creation, and ground-truth validation.
+- Do not modify a daily close when processing a settlement; test snapshot immutability explicitly.
+
+## Scope
+
+Prioritize domain behavior, APIs, persistence, fixtures, and test coverage. Keep the frontend a small read-only demo over the backend API.

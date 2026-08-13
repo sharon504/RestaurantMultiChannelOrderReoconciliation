@@ -1,0 +1,4 @@
+interface:
+  display_name: "Restaurant Reconciliation"
+  short_description: "Run an auditable restaurant reconciliation day."
+  default_prompt: "Use $reconcile-restaurant-day to reconcile restaurant feeds, close a day, and process settlement adjustments."
