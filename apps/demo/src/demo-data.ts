@@ -19,5 +19,6 @@ export const demoData: DashboardData = {
     { id: "adj_009", settlement: "agg1_tplus2_2026-08-14.csv", reason: "SETTLEMENT_TIMING", amount: 840, status: "pending" },
     { id: "adj_008", settlement: "agg2_tplus2_2026-08-14.csv", reason: "PLATFORM_DISCOUNT", amount: -216, status: "posted" },
     { id: "adj_007", settlement: "agg1_tplus2_2026-08-14.csv", reason: "COMMISSION_VARIANCE", amount: 192, status: "posted" }
-  ]
+  ],
+  orderTraces: []
 };

@@ -1,5 +1,5 @@
 import { demoData } from "./demo-data";
-import type { Adjustment, DashboardData, Exception } from "./types";
+import type { Adjustment, DashboardData, Exception, OrderTrace } from "./types";
 
 // Empty means same-origin: Vite proxies /api to the local backend during development,
 // while a production deployment can serve the UI and API from the same origin.
@@ -18,7 +18,7 @@ type ApiReconciliation = {
 };
 type ApiClose = { id: string; date: string; createdAt: string; revenue: number; orderIds: string[] };
 type ApiAdjustment = { id: string; closeId: string; orderId: string; settlementId: string; reason: string; amount: number };
-type ApiState = { orders: ApiOrder[]; settlements: { id: string; externalId: string }[] };
+type ApiState = { orders: ApiOrder[]; settlements: { id: string; externalId: string }[]; orderTraces?: OrderTrace[] };
 
 export type DashboardLoad = { data: DashboardData; source: "demo" | "fallback" | "api"; message?: string };
 
@@ -68,7 +68,8 @@ function toDashboard(reconciliation: ApiReconciliation, closes: ApiClose[], adju
       { label: "T+2 settlement delta", value: formatMoney(displayedAdjustments.reduce((sum, item) => sum + item.amount, 0)), detail: `${displayedAdjustments.length} linked adjustments` }
     ],
     exceptions,
-    adjustments: displayedAdjustments
+    adjustments: displayedAdjustments,
+    orderTraces: state.orderTraces ?? []
   };
 }
 

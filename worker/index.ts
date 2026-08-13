@@ -12,10 +12,20 @@ type Exception = { id: string; date: string; reason: Reason; orderId?: string; s
 type Close = { id: string; date: string; createdAt: string; orderIds: string[]; revenue: number; gross: number; platformDiscount: number; commission: number; paid: number; exceptionIds: string[]; exceptionSnapshot: Exception[] };
 type Adjustment = { id: string; closeId: string; settlementId: string; orderId: string; amount: number; reason: "COMMISSION_MISMATCH" | "DISCOUNT_MISMATCH"; component: "commission" | "discount"; createdAt: string };
 type State = { orders: Order[]; settlements: { id: string; externalId: string }[]; closes: Close[]; adjustments: Adjustment[]; adjusted: boolean };
+type OrderTrace = { id: string; occurredAt: string; channel: Channel; externalId: string; merchantRef?: string; decision: "canonical" | "merged" | "review"; canonicalOrder: string; explanation: string };
 
 const date = "2026-08-10";
 const now = () => new Date().toISOString();
 const json = (body: unknown, status = 200): Response => Response.json(body, { status, headers: { "Cache-Control": "no-store" } });
+const orderTraces: readonly OrderTrace[] = [
+  { id: "trace_pos_P-100", occurredAt: "09:00", channel: "pos", externalId: "P-100", merchantRef: "R-100", decision: "canonical", canonicalOrder: "order_pos_P-100", explanation: "POS is the first authoritative record for merchant reference R-100." },
+  { id: "trace_app_A-200", occurredAt: "10:00", channel: "app", externalId: "A-200", merchantRef: "R-200", decision: "canonical", canonicalOrder: "order_app_A-200", explanation: "Own-app order is independently retained as canonical evidence." },
+  { id: "trace_agg1_G1-300", occurredAt: "11:00", channel: "agg1", externalId: "G1-300", merchantRef: "R-300", decision: "canonical", canonicalOrder: "order_agg1_G1-300", explanation: "Aggregator 1 arrives as its own channel record." },
+  { id: "trace_agg2_G2-400", occurredAt: "12:00", channel: "agg2", externalId: "G2-400", merchantRef: "R-400", decision: "canonical", canonicalOrder: "order_agg2_G2-400", explanation: "Aggregator 2 arrives as its own channel record." },
+  { id: "trace_pos_P-100-replay", occurredAt: "09:00", channel: "pos", externalId: "P-100-replay", merchantRef: "R-100", decision: "merged", canonicalOrder: "order_pos_P-100", explanation: "Same merchant reference R-100: this replay is linked to P-100, not counted as another order." },
+  { id: "trace_app_A-801", occurredAt: "16:00", channel: "app", externalId: "A-801", decision: "review", canonicalOrder: "order_app_A-801", explanation: "Similar customer, time, and value are not sufficient evidence to merge." },
+  { id: "trace_app_A-802", occurredAt: "16:03", channel: "app", externalId: "A-802", decision: "review", canonicalOrder: "order_app_A-802", explanation: "No shared merchant reference with A-801: both orders remain separately auditable." }
+];
 
 const initialState = (): State => ({
   orders: [
@@ -121,7 +131,7 @@ export default {
 
     try {
       const state = await loadState(env.DB);
-      if (request.method === "GET" && url.pathname === "/api/state") return json({ ...state, exceptions: report(state).exceptions });
+      if (request.method === "GET" && url.pathname === "/api/state") return json({ ...state, orderTraces, exceptions: report(state).exceptions });
       if (request.method === "GET" && url.pathname === "/api/reconciliation") {
         const requestedDate = url.searchParams.get("date") ?? date;
         return requestedDate === date ? json(report(state)) : json({ error: `No seeded data for ${requestedDate}` }, 404);
