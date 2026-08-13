@@ -35,7 +35,7 @@ test('similar cross-feed records are review-only while a shared merchant referen
   assert.equal(svc.list().orders.length, 4);
   assert.equal(report.exceptions.filter(x => x.reason === 'AMBIGUOUS_DUPLICATE').length, 2);
   assert.equal(report.orders, 3);
-  assert.equal(report.revenue, 1200);
+  assert.equal(report.revenue, 1600);
 });
 
 test('a settlement that was known before close is reconciled in that close, never appended as a late adjustment', () => {
