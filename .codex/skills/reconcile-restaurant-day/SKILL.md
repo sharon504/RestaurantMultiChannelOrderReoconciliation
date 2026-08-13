@@ -10,7 +10,7 @@ Implement the reconciliation as a deterministic, append-only workflow. Retain ra
 ## Workflow
 
 1. Generate four channel feeds, kitchen events, late settlement files, and an independent truth manifest. Include unpaid, uncooked, cancelled-after-cook, duplicate/ambiguous, commission/discount, and timing cases.
-2. Normalize each source record without discarding source IDs. Ingest idempotently using `(source, externalId)`.
+2. Normalize each source record without discarding source IDs. Ingest idempotently using `(source, externalId)`; preserve conflicting replays as source-conflict evidence and make settlement ingestion/adjustment creation replay-safe too.
 3. Match on a strong shared identifier only. For a weak customer/time/amount resemblance, persist an ambiguous relationship and emit an exception; never merge it.
 4. Reconcile using `grossMinor`, `discountMinor`, `commissionMinor`, `paidMinor`, and kitchen state. Do not balance only on gross.
 5. Close by inserting a complete snapshot and summary. Expose no update path for its figures.
@@ -23,5 +23,6 @@ Implement the reconciliation as a deterministic, append-only workflow. Retain ra
 - A cancellation remains in history and becomes `CANCELLED_AFTER_COOKING` if confirmed by the kitchen.
 - Potential source duplicates and plausible repeat customer orders are distinguishable only by policy state (`ambiguous`), never silent deduplication.
 - Adjustments are additive ledger entries. They never mutate a close or its exceptions.
+- Use the canonical reason-code set in [reason-codes.md](references/reason-codes.md); add new codes there before emitting them.
 
 Read [reason-codes.md](references/reason-codes.md) when selecting or reviewing classifications.

@@ -10,5 +10,8 @@ Use stable, actionable codes:
 - `SETTLEMENT_TIMING`: settlement has not arrived or is for a different processing day.
 - `AMBIGUOUS_DUPLICATE`: records are similar but lack a strong ID; preserve both for review.
 - `UNMATCHED_SETTLEMENT`: settlement record cannot be confidently attached to an order.
+- `UNMATCHED_KITCHEN`: kitchen confirmation has no strong order reference.
+- `SOURCE_RECORD_CONFLICT`: a replay reused a source identity with a different payload; the accepted record remains unchanged.
+- `SETTLEMENT_VARIANCE`: linked late-settlement components change the forward-looking net position.
 
 For a late contradiction, create an adjustment with a signed `amountMinor`, the original close ID, settlement record ID, canonical order ID when matched, and a reason code.
