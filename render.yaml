@@ -4,7 +4,7 @@ services:
     runtime: node
     region: singapore
     plan: free
-    buildCommand: npm install && npm install --prefix apps/demo && npm run build && npm run build --prefix apps/demo
+    buildCommand: npm install && npm run build
     startCommand: node dist/server.js
     healthCheckPath: /health
     envVars:
