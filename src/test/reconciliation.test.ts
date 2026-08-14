@@ -61,3 +61,16 @@ test('settlement and kitchen feeds expose unmatched and timing evidence without 
   for (const reason of ['UNMATCHED_KITCHEN', 'UNMATCHED_SETTLEMENT', 'SETTLEMENT_TIMING']) assert.ok(reasons.includes(reason as any));
   svc.close(fixture.date); assert.equal(svc.adjust().length, 0);
 });
+
+test('a later kitchen confirmation resolves paid-but-uncooked without erasing its audit history', () => {
+  const svc = service('reconciliation-kitchen-resolution'); const row = fixture.orders[0];
+  svc.ingestOrders([row]);
+  assert.ok(svc.reconcile(fixture.date).exceptions.some(x => x.reason === 'PAID_UNCOOKED' && x.orderId === 'order_pos_P-100'));
+
+  svc.ingestKitchen([{ source: 'kitchen', externalId: 'K-resolve', orderRef: row.externalId, cookedAt: `${fixture.date}T18:00:00.000Z` }]);
+  assert.ok(!svc.reconcile(fixture.date).exceptions.some(x => x.reason === 'PAID_UNCOOKED' && x.orderId === 'order_pos_P-100'));
+
+  const historical = svc.list().exceptions.find(x => x.reason === 'PAID_UNCOOKED' && x.orderId === 'order_pos_P-100');
+  assert.ok(historical?.resolvedAt);
+  assert.deepEqual(historical?.resolvedBySourceIds, ['kitchen_kitchen_K-resolve']);
+});
