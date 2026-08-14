@@ -8,7 +8,7 @@ It is built around one accounting rule:
 
 ## Hosted simulator
 
-The hosted dashboard is served by the Render Node service. It runs the same reconciliation engine as the local CLI and seeds the baseline fixture when its store is empty. Use **Reset baseline** before starting a new demonstration.
+The hosted dashboard is served by Cloudflare Workers Static Assets at <https://restaurant-reconciliation.sharonpshajan.workers.dev>. Its `/api/*` requests are proxied to the Render Node service, which runs the same reconciliation engine as the local CLI and seeds the baseline fixture when its store is empty. Use **Reset baseline** before starting a new demonstration.
 
 ## Run a complete scenario
 
@@ -65,7 +65,7 @@ The **Scenario lab** on the dashboard guides the intended sequence.
 The dashboard uses same-origin API endpoints. They can also be exercised directly for integration testing.
 
 ```bash
-base='https://restaurant-reconciliation.onrender.com'
+base='https://restaurant-reconciliation.sharonpshajan.workers.dev'
 
 # Inspect current state
 curl "$base/api/reconciliation?date=2026-08-10"
@@ -117,6 +117,6 @@ pnpm validate
 
 ## Persistence and deployment
 
-Render runs the Node API and serves the compiled dashboard from the same origin. Deployment configuration is in `render.yaml`; no Cloudflare Worker, D1 database, or migrations are used. The free service uses an ephemeral JSON store, which is appropriate for the deterministic demo. Attach a Render persistent disk and set `STORE_PATH` to its mount path for durable state; persistent disks require a paid Render service.
+Render runs the Node API. Cloudflare serves the compiled dashboard and forwards `/api/*` to Render through a static-assets Worker configured in `wrangler.jsonc`; it has no D1 binding or backend persistence. The free Render service uses an ephemeral JSON store, which is appropriate for the deterministic demo. Attach a Render persistent disk and set `STORE_PATH` to its mount path for durable state; persistent disks require a paid Render service.
 
 The public deployment is intended as a shared demonstration environment. For a production restaurant workflow, protect mutation routes with authentication and replace the seeded fixture with authenticated ingestion from approved source systems.
