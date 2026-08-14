@@ -122,6 +122,98 @@
       "event": [{ "listen": "test", "script": { "exec": [
         "pm.test('unknown API route is rejected', () => { pm.response.to.have.status(404); pm.expect(pm.response.json().error).to.eql('not found'); });"
       ] } }]
+    },
+    {
+      "name": "12 - Custom order simulation (run separately)",
+      "description": "This folder resets the shared fixture and then runs a custom order through ingestion, kitchen confirmation, close, late settlement, and adjustment creation.",
+      "item": [
+        {
+          "name": "01 - Reset custom scenario",
+          "request": { "method": "POST", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/reset" },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('custom scenario starts from a clean baseline', () => { pm.response.to.have.status(200); pm.expect(pm.response.json().ok).to.eql(true); });"
+          ] } }]
+        },
+        {
+          "name": "02 - Ingest custom paid order",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "[\n  {\n    \"source\": \"app\",\n    \"externalId\": \"DEMO-001\",\n    \"channel\": \"app\",\n    \"businessDate\": \"{{businessDate}}\",\n    \"occurredAt\": \"{{businessDate}}T17:30:00.000Z\",\n    \"customer\": \"Demo Customer\",\n    \"status\": \"paid\",\n    \"money\": { \"gross\": 1250, \"platformDiscount\": 0, \"commission\": 0, \"paid\": 1250 }\n  }\n]", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/ingest/orders"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('custom order is accepted once', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.deep.equal({ accepted: 1, ignored: 0 }); });"
+          ] } }]
+        },
+        {
+          "name": "03 - Replay custom order (idempotency)",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "[\n  {\n    \"source\": \"app\",\n    \"externalId\": \"DEMO-001\",\n    \"channel\": \"app\",\n    \"businessDate\": \"{{businessDate}}\",\n    \"occurredAt\": \"{{businessDate}}T17:30:00.000Z\",\n    \"customer\": \"Demo Customer\",\n    \"status\": \"paid\",\n    \"money\": { \"gross\": 1250, \"platformDiscount\": 0, \"commission\": 0, \"paid\": 1250 }\n  }\n]", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/ingest/orders"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('identical order replay is a no-op', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.deep.equal({ accepted: 0, ignored: 1 }); });"
+          ] } }]
+        },
+        {
+          "name": "04 - Ingest kitchen confirmation",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "[\n  {\n    \"source\": \"kitchen\",\n    \"externalId\": \"K-DEMO-001\",\n    \"orderRef\": \"DEMO-001\",\n    \"cookedAt\": \"{{businessDate}}T17:35:00.000Z\"\n  }\n]", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/ingest/kitchen"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('kitchen evidence is accepted', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.deep.equal({ accepted: 1, ignored: 0 }); });"
+          ] } }]
+        },
+        {
+          "name": "05 - Reconcile custom order",
+          "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/reconciliation?date={{businessDate}}" },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('custom order contributes to the daily totals', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.include({ orders: 10, gross: 11450, paid: 9530, revenue: 8810 }); });"
+          ] } }]
+        },
+        {
+          "name": "06 - Close custom scenario",
+          "request": { "method": "POST", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/close" },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('custom close succeeds', () => pm.response.to.have.status(200));",
+            "const close = pm.response.json();",
+            "pm.test('custom close includes the simulated order', () => { pm.expect(close.revenue).to.eql(8810); pm.expect(close.orderIds).to.include('order_app_DEMO-001'); });",
+            "pm.collectionVariables.set('customCloseSnapshot', JSON.stringify(close));"
+          ] } }]
+        },
+        {
+          "name": "07 - Ingest late custom settlement",
+          "request": {
+            "method": "POST",
+            "header": [{ "key": "Content-Type", "value": "application/json" }, { "key": "Accept", "value": "application/json" }],
+            "body": { "mode": "raw", "raw": "[\n  {\n    \"source\": \"agg1\",\n    \"externalId\": \"SETTLE-DEMO-001\",\n    \"orderRef\": \"DEMO-001\",\n    \"businessDate\": \"{{businessDate}}\",\n    \"settled\": 1100,\n    \"commission\": 0,\n    \"platformDiscount\": 0,\n    \"receivedAt\": \"2026-08-12T09:00:00.000Z\"\n  }\n]", "options": { "raw": { "language": "json" } } },
+            "url": "{{baseUrl}}/api/ingest/settlements"
+          },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('late settlement is accepted', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.deep.equal({ accepted: 1, ignored: 0 }); });"
+          ] } }]
+        },
+        {
+          "name": "08 - Create late adjustment",
+          "request": { "method": "POST", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/adjust" },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('late settlement creates an adjustment', () => { pm.response.to.have.status(200); const adjustments = pm.response.json(); pm.expect(adjustments).to.have.length(1); pm.expect(adjustments[0]).to.include({ orderId: 'order_app_DEMO-001', amount: -150, reason: 'SETTLEMENT_VARIANCE', component: 'discount' }); });"
+          ] } }]
+        },
+        {
+          "name": "09 - Verify custom close is immutable",
+          "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/closes" },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('late settlement did not mutate the custom close', () => { pm.response.to.have.status(200); const original = JSON.parse(pm.collectionVariables.get('customCloseSnapshot')); pm.expect(pm.response.json()[0]).to.deep.equal(original); });"
+          ] } }]
+        }
+      ]
     }
   ]
 }

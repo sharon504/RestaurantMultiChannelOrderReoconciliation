@@ -16,8 +16,11 @@ The collection tests the API workflow:
 | `05–07` | Close creation, idempotency, and stored immutable snapshot. |
 | `08–10` | Late settlement adjustments, reason codes, and unchanged original close. |
 | `11` | Unknown API routes return `404`. |
+| `12 - Custom order simulation` | Runs a custom order through ingestion, replay idempotency, kitchen confirmation, close, late settlement, and immutable adjustment. Run this folder on its own. |
 
 `Reset fixture` and later steps mutate the selected service’s demo state. Run the collection serially; do not use Postman’s parallel runner. The free Render tier can take a short time to wake after inactivity—retry the request if Postman reports a transient `404` or network failure.
+
+The custom-simulation folder also resets the fixture. It is intentionally separate from the standard workflow, because it leaves the service in its own custom-scenario state.
 
 ## Testing ingestion routes
 
