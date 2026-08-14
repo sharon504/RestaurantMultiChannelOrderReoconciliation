@@ -1,0 +1,127 @@
+{
+  "info": {
+    "_postman_id": "7d42d6ca-f9f2-4f2d-a038-c035881cc93f",
+    "name": "Restaurant Reconciliation API",
+    "description": "Ordered API checks for the close-then-adjust workflow. Run the collection in order: Reset → baseline reads → close → late settlement adjustments → immutability check. All money assertions use integer minor units.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    { "key": "baseUrl", "value": "http://127.0.0.1:8787" },
+    { "key": "businessDate", "value": "2026-08-10" }
+  ],
+  "item": [
+    {
+      "name": "01 - Reset fixture (Worker only)",
+      "request": {
+        "method": "POST",
+        "header": [{ "key": "Accept", "value": "application/json" }],
+        "url": "{{baseUrl}}/api/reset",
+        "description": "Restores the deterministic baseline in the full Node reconciliation service."
+      },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('reset succeeds', () => pm.response.to.have.status(200));",
+        "const body = pm.response.json();",
+        "pm.test('fixture reset is acknowledged', () => pm.expect(body.ok).to.eql(true));",
+        "pm.test('fixture has no close or adjustment', () => { pm.expect(body.state.closes).to.be.an('array').that.is.empty; pm.expect(body.state.adjustments).to.be.an('array').that.is.empty; });"
+      ] } }]
+    },
+    {
+      "name": "02 - Health",
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/health" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('service is healthy', () => pm.response.to.have.status(200));",
+        "pm.test('health payload is OK', () => pm.expect(pm.response.json()).to.eql({ ok: true }));"
+      ] } }]
+    },
+    {
+      "name": "03 - Baseline reconciliation",
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/reconciliation?date={{businessDate}}" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('reconciliation is available', () => pm.response.to.have.status(200));",
+        "const body = pm.response.json();",
+        "pm.test('baseline financial totals are deterministic', () => { pm.expect(body.date).to.eql(pm.variables.replaceIn('{{businessDate}}')); pm.expect(body).to.include({ orders: 9, gross: 10200, platformDiscount: 300, commission: 720, paid: 8280, revenue: 7560 }); });",
+        "pm.test('baseline exceptions preserve operational evidence', () => { const reasons = body.exceptions.map((item) => item.reason); pm.expect(reasons).to.include.members(['COOKED_UNPAID', 'PAID_UNCOOKED', 'CANCELLED_AFTER_COOKING', 'AMBIGUOUS_DUPLICATE']); });"
+      ] } }]
+    },
+    {
+      "name": "04 - State and trace evidence",
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/state" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('state is available', () => pm.response.to.have.status(200));",
+        "const body = pm.response.json();",
+        "pm.test('baseline source evidence is retained', () => { pm.expect(body.orders).to.have.length(9); pm.expect(body.kitchens).to.have.length(8); pm.expect(body.settlements).to.be.an('array').that.is.empty; });",
+        "pm.test('raw source ledger is append-only', () => pm.expect(body.sourceRecords).to.have.length(17));"
+      ] } }]
+    },
+    {
+      "name": "05 - Create daily close",
+      "request": { "method": "POST", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/close" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('close succeeds', () => pm.response.to.have.status(200));",
+        "const close = pm.response.json();",
+        "pm.test('close captures the baseline snapshot', () => pm.expect(close).to.include({ id: 'close_day_2026-08-10', revenue: 7560, gross: 10200, platformDiscount: 300, commission: 720, paid: 8280 }));",
+        "pm.collectionVariables.set('closeSnapshot', JSON.stringify(close));"
+      ] } }]
+    },
+    {
+      "name": "06 - Re-run close (idempotency)",
+      "request": { "method": "POST", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/close" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('repeat close succeeds', () => pm.response.to.have.status(200));",
+        "const original = JSON.parse(pm.collectionVariables.get('closeSnapshot'));",
+        "pm.test('repeat close returns the original immutable snapshot', () => pm.expect(pm.response.json()).to.deep.equal(original));"
+      ] } }]
+    },
+    {
+      "name": "07 - List immutable close",
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/closes" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('one close exists', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.have.length(1); });"
+      ] } }]
+    },
+    {
+      "name": "08 - Apply late settlement adjustments",
+      "request": { "method": "POST", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/adjust" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('adjustment creation succeeds', () => pm.response.to.have.status(200));",
+        "const adjustments = pm.response.json();",
+        "pm.test('two linked, signed ledger entries are created', () => { pm.expect(adjustments).to.have.length(2); pm.expect(adjustments.map((item) => item.amount)).to.have.members([50, -50]); adjustments.forEach((item) => pm.expect(item.closeId).to.eql('close_day_2026-08-10')); });"
+      ] } }]
+    },
+    {
+      "name": "09 - List adjustments and settlement exceptions",
+      "item": [
+        {
+          "name": "Adjustments",
+          "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/adjustments" },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('adjustments are persisted', () => { pm.response.to.have.status(200); pm.expect(pm.response.json()).to.have.length(2); });"
+          ] } }]
+        },
+        {
+          "name": "Exceptions",
+          "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/exceptions" },
+          "event": [{ "listen": "test", "script": { "exec": [
+            "pm.test('settlement exceptions are visible', () => { pm.response.to.have.status(200); const reasons = pm.response.json().map((item) => item.reason); pm.expect(reasons).to.include.members(['COMMISSION_MISMATCH', 'DISCOUNT_MISMATCH', 'UNMATCHED_SETTLEMENT', 'SETTLEMENT_TIMING']); });"
+          ] } }]
+        }
+      ]
+    },
+    {
+      "name": "10 - Verify close snapshot was not changed",
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/closes" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('close query succeeds', () => pm.response.to.have.status(200));",
+        "const original = JSON.parse(pm.collectionVariables.get('closeSnapshot'));",
+        "pm.test('late settlement did not mutate the close', () => pm.expect(pm.response.json()[0]).to.deep.equal(original));"
+      ] } }]
+    },
+    {
+      "name": "11 - Unknown route returns 404",
+      "request": { "method": "GET", "header": [{ "key": "Accept", "value": "application/json" }], "url": "{{baseUrl}}/api/not-a-route" },
+      "event": [{ "listen": "test", "script": { "exec": [
+        "pm.test('unknown API route is rejected', () => { pm.response.to.have.status(404); pm.expect(pm.response.json().error).to.eql('not found'); });"
+      ] } }]
+    }
+  ]
+}

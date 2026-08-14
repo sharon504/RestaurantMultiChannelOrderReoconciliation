@@ -11,8 +11,6 @@
     "frontend": "pnpm --dir apps/demo dev -- --host 127.0.0.1",
     "dev": "sh scripts/dev.sh",
     "deploy:build": "npm run build --prefix apps/demo",
-    "db:migrate": "wrangler d1 migrations apply restaurant-reconciliation --remote",
-    "deploy": "npm run deploy:build && npm run db:migrate && wrangler deploy",
     "generate": "pnpm run build && node dist/cli.js generate",
     "demo": "pnpm run build && node dist/cli.js demo",
     "serve": "pnpm run build && node dist/server.js",
@@ -23,5 +21,8 @@
     "ingest:settlement": "pnpm run build && node dist/cli.js ingest-settlement",
     "adjust": "pnpm run build && node dist/cli.js adjust",
     "validate": "pnpm run build && node dist/cli.js validate"
+  },
+  "devDependencies": {
+    "typescript": "^5.9.3"
   }
 }

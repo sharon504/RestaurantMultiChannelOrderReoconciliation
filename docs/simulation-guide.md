@@ -8,11 +8,7 @@ It is built around one accounting rule:
 
 ## Hosted simulator
 
-Open the hosted dashboard:
-
-<https://restaurant-reconciliation.sharonpshajan.workers.dev>
-
-The dashboard is backed by Cloudflare D1. Its state is shared by visitors, so use **Reset baseline** before starting a new demonstration.
+The hosted dashboard is served by the Render Node service. It runs the same reconciliation engine as the local CLI and seeds the baseline fixture when its store is empty. Use **Reset baseline** before starting a new demonstration.
 
 ## Run a complete scenario
 
@@ -69,7 +65,7 @@ The **Scenario lab** on the dashboard guides the intended sequence.
 The dashboard uses same-origin API endpoints. They can also be exercised directly for integration testing.
 
 ```bash
-base='https://restaurant-reconciliation.sharonpshajan.workers.dev'
+base='https://restaurant-reconciliation.onrender.com'
 
 # Inspect current state
 curl "$base/api/reconciliation?date=2026-08-10"
@@ -87,7 +83,7 @@ The endpoints have the following behavior:
 
 | Endpoint | Method | Purpose |
 | --- | --- | --- |
-| `/health` | `GET` | Confirms the Worker is available. |
+| `/health` | `GET` | Confirms the service is available. |
 | `/api/state` | `GET` | Returns the seeded state, close records, and adjustments. |
 | `/api/reconciliation?date=2026-08-10` | `GET` | Returns daily revenue and the current exception report. |
 | `/api/exceptions` | `GET` | Returns the current exception queue. |
@@ -96,6 +92,9 @@ The endpoints have the following behavior:
 | `/api/close` | `POST` | Creates the daily close if it does not already exist. |
 | `/api/adjust` | `POST` | Posts the settlement adjustments after a close exists. |
 | `/api/reset` | `POST` | Restores the original shared demo fixture. |
+| `/api/ingest/orders` | `POST` | Idempotently ingests an array of order source records. |
+| `/api/ingest/kitchen` | `POST` | Idempotently ingests an array of kitchen source records. |
+| `/api/ingest/settlements` | `POST` | Idempotently ingests an array of settlement source records. |
 
 ## Local simulation
 
@@ -118,6 +117,6 @@ pnpm validate
 
 ## Persistence and deployment
 
-The hosted simulator stores state in Cloudflare D1. Schema migrations live in `migrations/`; GitHub Actions applies them before deploying the Worker on every push to `main`.
+Render runs the Node API and serves the compiled dashboard from the same origin. Deployment configuration is in `render.yaml`; no Cloudflare Worker, D1 database, or migrations are used. The free service uses an ephemeral JSON store, which is appropriate for the deterministic demo. Attach a Render persistent disk and set `STORE_PATH` to its mount path for durable state; persistent disks require a paid Render service.
 
 The public deployment is intended as a shared demonstration environment. For a production restaurant workflow, protect mutation routes with authentication and replace the seeded fixture with authenticated ingestion from approved source systems.

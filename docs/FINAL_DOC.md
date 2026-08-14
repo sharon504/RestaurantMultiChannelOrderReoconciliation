@@ -497,7 +497,7 @@ The following exceptions are detected correctly:
 ### Current implementation
 
 ```text
-Cloudflare D1
+Local JSON store (or a Render persistent disk)
 ↓
 
 Single JSON application state

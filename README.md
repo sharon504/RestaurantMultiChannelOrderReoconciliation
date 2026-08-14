@@ -62,18 +62,13 @@ pnpm dev
 
 `pnpm dev` seeds the deterministic demo data, starts the backend at `http://localhost:3000`, and starts the Vite demo (normally `http://localhost:5173`). Press `Ctrl-C` once to stop both. For separate terminals, use `pnpm backend` and `pnpm frontend`.
 
-### Deploy to Cloudflare
+### Deploy to Render
 
-The production deployment is one Cloudflare Worker: it serves the built React site and the API at the same origin (`/api/*` and `/health`). Its state is stored in the bound Cloudflare D1 database, so `POST /api/close` and `POST /api/adjust` are durable and idempotent. The GitHub workflow applies the tracked D1 migrations before each deploy.
+Render runs the full Node reconciliation engine and serves the built React demo from the same service, so the frontend uses the real API at the same origin. The service seeds the baseline order and kitchen fixture on first start. `POST /api/reset` restores that baseline; `POST /api/adjust` introduces the bundled T+2 settlement into the demo, while production callers can ingest settlement rows through `POST /api/ingest/settlements`.
 
-The hosted dashboard includes a shared simulation lab: reset the fixture, close the day, then apply the T+2 settlement. `POST /api/reset` restores the baseline state for another run.
+Create a Render Web Service from this repository using [render.yaml](render.yaml). It builds the backend and demo UI, starts `node dist/server.js`, and health-checks `/health`. No Cloudflare Worker or D1 database is required.
 
-```bash
-npm ci --prefix apps/demo
-npm run deploy
-```
-
-Set `CLOUDFLARE_API_TOKEN` and `CLOUDFLARE_ACCOUNT_ID` in the environment for a local deployment. The GitHub workflow at `.github/workflows/deploy.yml` runs the same build and deploys every push to `main`; configure those two values as repository secrets. Scope the token to the target Cloudflare account and Worker.
+The free service uses the deterministic `data/store.json` demo store and resets it on a restart. Attach a Render persistent disk and set `STORE_PATH` beneath its mount path before using this deployment for durable state; persistent disks require a paid Render service.
 
 Generated data lands in `data/` (order feeds, kitchen confirmations, settlements, ground truth). Output includes daily-close figures, an exception report, and adjustment records linked to the original close.
 
