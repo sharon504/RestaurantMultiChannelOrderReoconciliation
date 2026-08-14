@@ -10,6 +10,9 @@ type ApiOrder = {
   id: string;
   externalId: string;
   channel: "pos" | "app" | "agg1" | "agg2";
+  businessDate: string;
+  occurredAt: string;
+  canonicalRef?: string;
   money: { gross: number; platformDiscount: number; commission: number; paid: number };
 };
 type ApiException = { id: string; orderId?: string; settlementId?: string; reason: string };
@@ -42,6 +45,32 @@ function exposureFor(exception: ApiException, order: ApiOrder | undefined, adjus
   return 0;
 }
 
+function buildOrderTraces(orders: ApiOrder[], exceptions: ApiException[]): OrderTrace[] {
+  const ambiguousOrderIds = new Set(exceptions.filter((item) => item.reason === "AMBIGUOUS_DUPLICATE").flatMap((item) => item.orderId ? [item.orderId] : []));
+  const grouped = new Map<string, ApiOrder[]>();
+  for (const order of orders) if (order.canonicalRef) grouped.set(order.canonicalRef, [...(grouped.get(order.canonicalRef) ?? []), order]);
+
+  return [...orders].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt) || a.id.localeCompare(b.id)).map((order): OrderTrace => {
+    const related = order.canonicalRef ? [...(grouped.get(order.canonicalRef) ?? [])].sort((a, b) => a.occurredAt.localeCompare(b.occurredAt) || a.id.localeCompare(b.id)) : [order];
+    const primary = related[0];
+    const isAmbiguous = ambiguousOrderIds.has(order.id);
+    const isMergedReplay = related.length > 1 && primary.id !== order.id;
+    const decision: OrderTrace["decision"] = isAmbiguous ? "review" : isMergedReplay ? "merged" : "canonical";
+    const explanation = isAmbiguous
+      ? "Similar records lack a shared strong reference, so both remain separately auditable."
+      : isMergedReplay
+        ? `Shared merchant reference ${order.canonicalRef} links this replay to ${primary.externalId}.`
+        : order.canonicalRef
+          ? `Merchant reference ${order.canonicalRef} is the strong identity for this order.`
+          : "No conflicting evidence exists; this source record remains canonical.";
+    return {
+      id: `trace_${order.id}`, occurredAt: order.occurredAt.slice(11, 16), channel: order.channel,
+      externalId: order.externalId, ...(order.canonicalRef ? { merchantRef: order.canonicalRef } : {}),
+      decision, canonicalOrder: primary.id, explanation
+    };
+  });
+}
+
 function toDashboard(reconciliation: ApiReconciliation, closes: ApiClose[], adjustments: ApiAdjustment[], state: ApiState): DashboardData {
   const orders = new Map(state.orders.map((order) => [order.id, order]));
   const settlements = new Map(state.settlements.map((settlement) => [settlement.id, settlement.externalId]));
@@ -69,7 +98,7 @@ function toDashboard(reconciliation: ApiReconciliation, closes: ApiClose[], adju
     ],
     exceptions,
     adjustments: displayedAdjustments,
-    orderTraces: state.orderTraces ?? []
+    orderTraces: state.orderTraces ?? buildOrderTraces(state.orders, reconciliation.exceptions)
   };
 }
 
