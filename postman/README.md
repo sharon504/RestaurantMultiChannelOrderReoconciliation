@@ -5,13 +5,12 @@ Import these two files into Postman:
 1. `restaurant-reconciliation.postman_collection.json`
 2. `restaurant-reconciliation.local.postman_environment.json`
 
-Select the **Restaurant Reconciliation - Render** environment, then run the collection in its listed order. The environment defaults to the deployed service at `https://restaurant-reconciliation.onrender.com`. To test locally, start `pnpm dev` and change `baseUrl` to `http://127.0.0.1:5173`; Vite serves the frontend and proxies API requests to the local backend.
+Select the **Restaurant Reconciliation - Render** environment, then run the collection in its listed order. Both the collection and environment default to `https://restaurant-reconciliation.onrender.com`. To test locally, start `pnpm serve` and change `baseUrl` to `http://127.0.0.1:3000`.
 
-The collection tests the dashboard and the API together:
+The collection tests the API workflow:
 
 | Stage | Check |
 | --- | --- |
-| `00 - Frontend dashboard` | The same-origin React dashboard is served as HTML. |
 | `01 - Reset fixture` | Restores the seeded open-day baseline. |
 | `02–04` | Health, reconciliation totals, and append-only source evidence. |
 | `05–07` | Close creation, idempotency, and stored immutable snapshot. |

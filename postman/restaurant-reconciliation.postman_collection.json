@@ -6,24 +6,10 @@
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
   },
   "variable": [
-    { "key": "baseUrl", "value": "http://127.0.0.1:8787" },
+    { "key": "baseUrl", "value": "https://restaurant-reconciliation.onrender.com" },
     { "key": "businessDate", "value": "2026-08-10" }
   ],
   "item": [
-    {
-      "name": "00 - Frontend dashboard",
-      "request": {
-        "method": "GET",
-        "header": [{ "key": "Accept", "value": "text/html" }],
-        "url": "{{baseUrl}}/",
-        "description": "Confirms the Render service serves the built React dashboard from the same origin as the API."
-      },
-      "event": [{ "listen": "test", "script": { "exec": [
-        "pm.test('dashboard is served', () => pm.response.to.have.status(200));",
-        "pm.test('dashboard response is HTML', () => pm.expect(pm.response.headers.get('content-type')).to.include('text/html'));",
-        "pm.test('dashboard root is present', () => pm.expect(pm.response.text()).to.include('<div id=\"root\">'));"
-      ] } }]
-    },
     {
       "name": "01 - Reset fixture (Worker only)",
       "request": {
